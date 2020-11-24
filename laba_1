@@ -1,0 +1,85 @@
+//задача: одномерный массив, в нем посчитать количество элементов, кратных 3
+
+#include "stdafx.h"
+#include <iostream>
+#include <thread>
+#include <algorithm>
+#include <vector>
+#include <mutex>
+#include <Windows.h>
+
+using namespace std;
+
+const int COUNT = 1000;
+const int MAX_NTHREAD = 4;
+
+mutex Mutex;
+
+void init_array(int arr[])
+{
+	srand(GetTickCount64());
+	//cout << " Array: ";
+	for (int i = 0; i < COUNT; i++)
+	{
+		arr[i] = rand() % 100;
+	//	cout <<  arr[i] << " ";
+	}
+}
+
+int kol_nonparallel(int arr[])
+{
+	int s = 0;
+	for (int i = 0; i < COUNT; i++)
+		if (arr[i] % 3 == 0)
+			s ++;
+	return s;
+}
+
+void kol(int arr[], int start, int finish, int& global_kol)
+{
+	int local_kol = 0;
+	for (int i = start; i < finish; i++)
+		if (arr[i] % 3 == 0)
+			local_kol ++;
+	lock_guard<std::mutex> lock(Mutex);
+	//Mutex.lock();
+	global_kol += local_kol; // результат передаётся по адресу
+	cout << this_thread::get_id() << ": " << global_kol << endl;
+	//Mutex.unlock();
+}
+
+int kol_parallel(int arr[])
+{
+	thread t[MAX_NTHREAD]; // создание объектов потоков
+	int n = COUNT / MAX_NTHREAD; // вспомогательная переменная для определения границ потоков
+
+	int global_kol = 0;
+
+	// создание потоков, согласно границам
+	for (int i = 0; i < MAX_NTHREAD; i++)
+	{
+		if (i == MAX_NTHREAD - 1)
+			//конструкторы потоков
+			t[i] = thread(kol, arr, n * i, COUNT, ref(global_kol));
+		else
+			t[i] = thread(kol, arr, n * i, n * (i + 1), ref(global_kol));
+	}
+	//ожидание завершения работы потоков
+	for (int i = 0; i < MAX_NTHREAD; i++)
+		t[i].join(); // завершение потока
+
+	return global_kol; //возвращаем результат
+}
+
+int main()
+{
+	int a[COUNT];
+	init_array(a);
+	cout << "\n kol nonparallel = " << kol_nonparallel(a) << endl;
+	cout << "kol parallel = " << kol_parallel(a) << endl;
+
+	cin.ignore();
+	return 0;
+}
+
+
