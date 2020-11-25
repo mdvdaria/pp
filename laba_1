@@ -81,3 +81,24 @@ int main()
 	cin.ignore();
 	return 0;
 }
+
+unsigned int const min_block_size = 25;
+unsigned int const max_threads =
+ (COUNT + min_block_size - 1) / min_block_size;
+unsigned int const hardware_threads =
+thread::hardware_concurrency();
+unsigned int const count_threads =
+ min(hardware_threads != 0 ?
+ hardware_threads : 2, max_threads);
+int block_size = COUNT / count_threads;
+int global_sum = 0;
+vector<thread> threads(count_threads - 1);
+for (unsigned int i = 0; i<count_threads-1; i++)
+threads[i] = thread(sum, arr, block_size*i,
+ block_size*(i + 1), ref(global_sum));
+// обработка последнего участка
+sum(arr, block_size*(count_threads - 1), COUNT,global_sum);
+for (unsigned int i = 0; i<count_threads-1; i++)
+threads[i].join();
+//for_each(threads.begin(),threads.end(),mem_fn(&thread::join))
+;
